@@ -13,7 +13,7 @@ For pyquant, check installation documentation here - https://pyquantnews.com/wp-
 
 
 '''
-
+#import libraries
 import pandas as pd
 import numpy as np
 import yfinance as yf
@@ -33,6 +33,25 @@ from tensorflow.keras import models, layers, optimizers, losses, callbacks
 from tensorflow.keras.layers import Dropout
 
 def prepare_data(stock, start, end, lookback):
+'''
+    This method is used to retrieve individual stock data
+
+    Parameters
+    ----------
+    stock : string
+        ticker of the stock whose data is to be downloaded.
+    start : datetime
+        start date of the stock data to be retrieved.
+    end : datetime
+        end date of the stock data to be retrieved.
+    lookback : TYPE
+        the lookback period required when the data of a certain period is to be considered.
+
+    Returns
+    -------
+    dataset of the specified stock within the selected period.
+
+    '''
 
     df = yf.download(stock, start, end, progress=False, auto_adjust=False)
 
@@ -56,6 +75,25 @@ def prepare_data(stock, start, end, lookback):
     return df
 
 def prepare_multiple_stock_data(stock_list, start, end):
+    '''
+    
+
+    Parameters
+    ----------
+    stock_list : list
+        list of the tickers whose stock is to be downloaded and combined
+    start : datetime
+        start date of the stock data to be retrieved.
+    end : datetime
+        end date of the stock data to be retrieved.
+        DESCRIPTION.
+
+    Returns
+    -------
+    combined_df : dataframe
+        dataset of all the specified stock within the selected period.
+
+    '''
 
     combined_df = pd.DataFrame()
 
@@ -67,6 +105,26 @@ def prepare_multiple_stock_data(stock_list, start, end):
 
 
 def normalize_split_data(df, lookback, train=True):
+    '''
+    this function handles the normalization of the data to be fed into the model
+
+    Parameters
+    ----------
+    df : dataframe
+        dataframe containing the data to be processed and normalized.
+    lookback : TYPE
+        the lookback period required when the data of a certain period is to be considered.
+    train : string, optional
+        tells the function if the data to be processed is a train or test data.
+        If the value is true, X_train, X_val, y_train, y_val is returned.
+        If the value is false, then X_test, y_test is returned. The default is True.
+
+    Returns
+    -------
+    TYPE
+        X_train, X_val, y_train, y_val if train is true and X_test, y_test if train is false.
+
+    '''
     features = ['momentum', 'volatility', 'distance', 'lag1', 'lag2', 'lag3', 'lag4', 'lag5', 'actual_return', 'expected_return', 'momentum_anomaly']
     label = 'returns'
 
@@ -79,13 +137,16 @@ def normalize_split_data(df, lookback, train=True):
     X_sequences = []
     y_sequences = []
 
+    #this creates a sequence of data that enables the model identify patterns within the lookback period
     for i in range(len(X_scaled) - lookback + 1):
         X_sequences.append(X_scaled[i:i+lookback])
         y_sequences.append(y[i+lookback-1])
 
+    #convert the sequences to numpy array
     X_sequences = np.array(X_sequences)
     y_sequences = np.array(y_sequences)
 
+    #return the processed data based on the value of train
     if train:
         X_train, X_val, y_train, y_val = train_test_split(X_sequences, y_sequences, test_size=0.20, shuffle=True)
         return X_train, X_val, y_train, y_val
@@ -95,6 +156,28 @@ def normalize_split_data(df, lookback, train=True):
         return X_test, y_test
 
 def create_lstm_model(X_train, X_val, y_train, y_val):
+    '''
+    this function is used to train the lstm model
+    
+    Parameters
+    ----------
+    X_train : numpy array
+        the X_train data to be used for the model's training.
+    X_val : TYPE
+        the X_val data to be used for the model's training.
+    y_train : TYPE
+        the y_train data to be used for the model's training.
+    y_val : TYPE
+        the y_val data to be used for the model's training..
+
+    Returns
+    -------
+    model : keras.sequential
+        the lstm trained model.
+    history : history
+        holds the value of the training data such as mse, loss, validation mse and validation.
+
+    '''
     model = Sequential(name='LSTM')
     model.add(LSTM(32, input_shape=(lookback, len(features))))
     model.add(Dense(1))
@@ -104,7 +187,28 @@ def create_lstm_model(X_train, X_val, y_train, y_val):
     return model, history
 
 def create_gru_model(X_train, X_val, y_train, y_val):
+    '''
+    this function is used to train the gru model
+    
+    Parameters
+    ----------
+    X_train : numpy array
+        the X_train data to be used for the model's training.
+    X_val : TYPE
+        the X_val data to be used for the model's training.
+    y_train : TYPE
+        the y_train data to be used for the model's training.
+    y_val : TYPE
+        the y_val data to be used for the model's training..
 
+    Returns
+    -------
+    model : keras.sequential
+        the gru trained model.
+    history : history
+        holds the value of the training data such as mse, loss, validation mse and validation.
+
+    '''
     model = Sequential(name='GRU')
     model.add(GRU(32, input_shape=(lookback, len(features))))
     model.add(Dense(1))
@@ -114,6 +218,28 @@ def create_gru_model(X_train, X_val, y_train, y_val):
     return model, history
 
 def create_bi_lstm(X_train, X_val, y_train, y_val):
+    '''
+    this function is used to train the bi-directional lstm
+    
+    Parameters
+    ----------
+    X_train : numpy array
+        the X_train data to be used for the model's training.
+    X_val : TYPE
+        the X_val data to be used for the model's training.
+    y_train : TYPE
+        the y_train data to be used for the model's training.
+    y_val : TYPE
+        the y_val data to be used for the model's training..
+
+    Returns
+    -------
+    model : keras.sequential
+        the bi lstm trained model.
+    history : history
+        holds the value of the training data such as mse, loss, validation mse and validation.
+    '''
+    
     model = Sequential(name='Bidirectional')
     # Add a bidirectional LSTM layer
     model.add(Bidirectional(LSTM(units=64, return_sequences=True, activation='tanh',
@@ -131,6 +257,21 @@ def create_bi_lstm(X_train, X_val, y_train, y_val):
     return model, history
 
 def check_outliers(df, stock):
+    '''
+    this function is used to check and plot outliers of a stock data
+
+    Parameters
+    ----------
+    df : dataframe
+        dataframe where the data to check for outliers is to be saved.
+    stock : string
+        the ticker of the stock use data's outlier is to be checked.
+
+    Returns
+    -------
+    None.
+
+    '''
     df_1 = df.copy()
 
     df_1 = df_1.loc[df['Stock'] == stock]
@@ -154,6 +295,27 @@ def check_outliers(df, stock):
     plt.show()
 
 def plot_close_return(df, stock, columns, title, ylabel):
+    '''
+    This function plots the return data of a specified stock
+
+    Parameters
+    ----------
+    df : dataframe
+        dataframe from where the data to be used for the plotting is gotten from.
+    stock : string
+        the stock whose data is to be used to plot the returns.
+    columns : list
+        list of columns whose that is to be plot on the chart.
+    title : string
+        The title of the chart.
+    ylabel : string
+        label of the y axis.
+
+    Returns
+    -------
+    None.
+
+    '''
     df_1 = df.copy()
 
     df_1 = df_1.loc[df['Stock'] == stock]
@@ -161,6 +323,29 @@ def plot_close_return(df, stock, columns, title, ylabel):
     #plt.savefig('/content/drive/MyDrive/ml-group-3/images/returns.png')
 
 def plot_performance(data, key, label, xlabel, ylabel, title):
+    '''
+    This function plots the training performance of specified stocks that has been trained 
+
+    Parameters
+    ----------
+    df : dataframe
+        dataframe from where the data to be used for the plotting is gotten from.
+    key : string
+        the required column to be plot on the chat.
+    label : string
+        label of the chart.
+    xlabel : string
+        xlabel of the chart.
+    ylabel : string
+        ylabel of the chart.
+    title : title
+        title of the chart.
+
+    Returns
+    -------
+    None.
+
+    '''
   plt.plot(data[key], label=label)
   plt.xlabel(xlabel)
   plt.ylabel(ylabel)
@@ -168,6 +353,24 @@ def plot_performance(data, key, label, xlabel, ylabel, title):
   plt.legend()
 
 def cal_kur_skew(df, column, stock_list):
+    '''
+    this function generates the kurtosis and skewness of a column in a stock data
+
+    Parameters
+    ----------
+    df : dataframe
+        pandas dataframe that contains the data whose column is to be checked for skewnwss and kurtosis.
+    column : string
+        column whose kurtosis and skewness is to be checked.
+    stock_list : list
+        list of stocks or stickers whose data is to be checked for skewness and kurtosis.
+
+    Returns
+    -------
+    stat_df : pandas dataframe
+        pandas dataframe containin the skewness and kurtosis of stocks in the stock list.
+
+    '''
     stat_df = pd.DataFrame(index=stock_list, columns=['skewness', 'kurtosis'])
 
     for s in stock_list:
@@ -181,6 +384,26 @@ def cal_kur_skew(df, column, stock_list):
     return stat_df
 
 def evaluate_model(model, result, X_val, y_val):
+    '''
+    This function evaluates a train models and outputs the model's performance
+
+    Parameters
+    ----------
+    model : keras.sequential
+        trained model to be evaluated.
+    result : string
+        tells the model what to output e.g metrics or returns.
+    X_val : numpy array
+        X_val data to be used for the evaluation. This can be the test data
+    y_val : numpy array
+        y_val data to be used for the evaluation. This can be the test data.
+
+    Returns
+    -------
+    TYPE
+        returns the performance metric if train is metrics or returns if any other string is passed.
+
+    '''
 
     y_pred = model.predict(X_val, verbose=0)
 
@@ -214,6 +437,79 @@ def evaluate_model(model, result, X_val, y_val):
 
         return actual_cumulative_return, predicted_cumulative_return
 
+def tunned_bi_lstm(X_train, y_train, X_val, y_val):
+    '''
+    this function is used to train the bi-directional lstm with updated parameters. 
+    these parameters have been tuned to give the best results
+    
+    Parameters
+    ----------
+    X_train : numpy array
+        the X_train data to be used for the model's training.
+    X_val : TYPE
+        the X_val data to be used for the model's training.
+    y_train : TYPE
+        the y_train data to be used for the model's training.
+    y_val : TYPE
+        the y_val data to be used for the model's training..
+
+    Returns
+    -------
+    model : keras.sequential
+        the bi lstm trained model.
+    history : history
+        holds the value of the training data such as mse, loss, validation mse and validation.
+    '''
+    model = Sequential(name='Tuned_Bi_LSTM')
+    # Add a bidirectional LSTM layer
+    model.add(Bidirectional(LSTM(units=16, return_sequences=True),
+                            input_shape=(lookback, len(features))))
+
+    model.add(LSTM(units=16, return_sequences=True))
+    model.add(LSTM(units=16))
+
+    # Output layer
+    model.add(Dense(1))
+
+    # Compile the model with hyperparameter tuning
+
+    model.compile(optimizer='adam', loss='mse', metrics=['mse'])
+    early_Stop = callbacks.EarlyStopping(monitor='val_mse', patience=3)
+    history = model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=50, batch_size=32, verbose=0, callbacks=[early_Stop])
+
+    return model, history
+
+# Define the advanced version of the function for hyper parameter optimization
+def build_model(hp):
+    model = Sequential(name='Bidirectional')
+
+    # Define hyperparameters for Bidirectional LSTM layer
+    units_lstm1 = hp.Int('units_lstm1', min_value=8, max_value=16, step=8)
+
+    # Add a bidirectional LSTM layer with tunable hyperparameters
+    model.add(Bidirectional(LSTM(units=units_lstm1, return_sequences=True),input_shape=(lookback, len(features))))
+
+    # Define hyperparameters for additional LSTM layers
+    units_lstm2 = hp.Int('units_lstm2', min_value=8, max_value=16, step=8)
+    units_lstm3 = hp.Int('units_lstm3', min_value=8, max_value=16, step=8)
+
+    # Add additional LSTM layers with tunable hyperparameters
+    model.add(LSTM(units=units_lstm2, return_sequences=True))
+    model.add(LSTM(units=units_lstm3))
+
+    # Output layer
+    model.add(Dense(1))
+
+    # Compile the model with hyperparameter tuning
+    optimizer = hp.Choice('optimizer', values=['adam', 'rmsprop'])
+    loss = 'mse'
+    metrics = ['mse']
+    model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+
+    return model
+
+#------------------------------ parameter initialization -----------------------
+#initialization of parameters
 stock_list = ['BP.L','HSBA.L','SHEL.L','ULVR.L','VOD.L','BHP.L','AZN.L','GSK.L','LLOY.L','TUI.L', 'RR.L', 'IHG.L']
 train_stock = 'BP.L'
 start = '2012-01-01'
@@ -221,7 +517,7 @@ end = '2022-12-31'
 lookback = 2
 features = ['momentum', 'volatility', 'distance', 'lag1', 'lag2', 'lag3', 'lag4', 'lag5', 'actual_return', 'expected_return', 'momentum_anomaly']
 
-
+#data check
 df = prepare_data('BP.L', start, end, lookback)
 print(df.shape)
 X_train, X_val, y_train, y_val = normalize_split_data(df, lookback, train=True)
@@ -248,7 +544,7 @@ plt.show()
 plot_close_return(df, 'BP.L', 'momentum_anomaly', f'Momentum Anomaly of BP.L from {start} to {end}', 'Momentum Anomaly')
 plt.show()
 
-# @title Default title text
+# print and plot the skewness and kurtosis of the data
 stat_df = cal_kur_skew(m_df, 'Adj Close', stock_list)
 print(stat_df)
 
@@ -291,11 +587,10 @@ plt.title('Histogram of Data and Kurtosis for BP.L')
 plt.grid(True)
 plt.show()
 
+#trains and evaluate the lstm model
 lstm_model, hist = create_lstm_model(X_train, X_val, y_train, y_val)
-
 lstm_df = evaluate_model(lstm_model, 'metrics', X_val, y_val)
 print(lstm_df)
-
 plt.figure(figsize=(6, 5))
 plot_performance(hist.history, 'loss', 'Train Loss', 'Epoch', 'Loss', 'LSTM Training and Validation Loss')
 plot_performance(hist.history, 'val_loss', 'Validation Loss', 'Epoch', 'Loss', 'LSTM Training and Validation Loss')
@@ -308,8 +603,8 @@ plot_performance(hist.history, 'val_mse', 'Validation mse', 'Epoch', 'mse', 'LST
 plt.grid()
 plt.show()
 
+#trains and evakuates the gru model
 gru_model, hist = create_gru_model(X_train, X_val, y_train, y_val)
-
 gru_df = evaluate_model(gru_model, 'metrics', X_val, y_val)
 print(gru_df)
 
@@ -325,6 +620,7 @@ plot_performance(hist.history, 'val_mse', 'Validation mse', 'Epoch', 'mse', 'GRU
 plt.grid()
 plt.show()
 
+#trains and evaluates the bi directional lstm modeo
 bi_model, hist = create_bi_lstm(X_train, X_val, y_train, y_val)
 bi_lstm_df = evaluate_model(bi_model, 'metrics', X_val, y_val)
 print(bi_lstm_df)
@@ -341,39 +637,10 @@ plot_performance(hist.history, 'val_mse', 'Validation mse', 'Epoch', 'mse', 'Bi-
 plt.grid()
 plt.show()
 
-# Define the advanced version of the function
-def build_model(hp):
-    model = Sequential(name='Bidirectional')
-
-    # Define hyperparameters for Bidirectional LSTM layer
-    units_lstm1 = hp.Int('units_lstm1', min_value=8, max_value=16, step=8)
-
-    # Add a bidirectional LSTM layer with tunable hyperparameters
-    model.add(Bidirectional(LSTM(units=units_lstm1, return_sequences=True),input_shape=(lookback, len(features))))
-
-    # Define hyperparameters for additional LSTM layers
-    units_lstm2 = hp.Int('units_lstm2', min_value=8, max_value=16, step=8)
-    units_lstm3 = hp.Int('units_lstm3', min_value=8, max_value=16, step=8)
-
-    # Add additional LSTM layers with tunable hyperparameters
-    model.add(LSTM(units=units_lstm2, return_sequences=True))
-    model.add(LSTM(units=units_lstm3))
-
-    # Output layer
-    model.add(Dense(1))
-
-    # Compile the model with hyperparameter tuning
-    optimizer = hp.Choice('optimizer', values=['adam', 'rmsprop'])
-    loss = 'mse'
-    metrics = ['mse']
-    model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
-
-    return model
-
+#call the keras function to give the best parameters for the best functions
 build_model(keras_tuner.HyperParameters())
 
 #Initialize a random search on the model using the parameters identified
-
 tuner = keras_tuner.RandomSearch(
     hypermodel=build_model,
     objective=keras_tuner.Objective("mse", direction="min"),
@@ -386,26 +653,6 @@ tuner.search(X_train, y_train, epochs=50, validation_data=(X_val, y_val))
 best_model = tuner.get_best_models()[0]
 
 tuner.results_summary()
-
-def tunned_bi_lstm(X_train, y_train, X_val, y_val):
-    model = Sequential(name='Tuned_Bi_LSTM')
-    # Add a bidirectional LSTM layer
-    model.add(Bidirectional(LSTM(units=16, return_sequences=True),
-                            input_shape=(lookback, len(features))))
-
-    model.add(LSTM(units=16, return_sequences=True))
-    model.add(LSTM(units=16))
-
-    # Output layer
-    model.add(Dense(1))
-
-    # Compile the model with hyperparameter tuning
-
-    model.compile(optimizer='adam', loss='mse', metrics=['mse'])
-    early_Stop = callbacks.EarlyStopping(monitor='val_mse', patience=3)
-    history = model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=50, batch_size=32, verbose=0, callbacks=[early_Stop])
-
-    return model, history
 
 '''
 Trial 10 Complete [00h 00m 49s]
@@ -444,8 +691,9 @@ plot_performance(hist.history, 'val_mse', 'Validation mse', 'Epoch', 'mse', 'Bi-
 plt.grid()
 plt.show()
 
-#1. Get one model trained by a single stock data. Test the model
-# with stock data from the 10 different stocks
+'''
+This block of code evaluates the performance of the model trained using a single stock data
+'''
 
 results_df = pd.DataFrame(columns=['Stock', 'Actual Return', 'Predicted Return'])
 mse_s_df = pd.DataFrame(columns=['mse','mae','rmse','r2','f1'])
@@ -488,12 +736,14 @@ print(f'{mse:.15f}')
 # Show all the subplots
 plt.show()
 
+'''
+This block of code evaluates the performance of the model trained using the stock data of all the stocks
+'''
 all_df = prepare_multiple_stock_data(stock_list, start, end)
 X_train_all, X_val_all, y_train_all, y_val_all = normalize_split_data(all_df, lookback, train=True)
 
 tuned_model_a, hist_a = tunned_bi_lstm(X_train_all, y_train_all, X_val_all, y_val_all)
 
-#all against 1
 # Create an empty DataFrame to store the results
 results_df = pd.DataFrame(columns=['Stock', 'Actual Return', 'Predicted Return'])
 mse_all_df = pd.DataFrame(columns=['mse','mae','rmse','r2','f1'])
@@ -537,7 +787,9 @@ print(f'{mse_all:.15f}')
 # Show all the subplots
 plt.show()
 
-#5 to 5
+'''
+This block of code evaluates the performance of the model trained using the stock data half of the stocks
+'''
 
 half_df = prepare_multiple_stock_data(stock_list[6:], start, end)
 X_train_half, X_val_half, y_train_half, y_val_half = normalize_split_data(half_df, lookback, train=True)
@@ -585,6 +837,10 @@ print(f'{mse_half:.15f}')
 # Show all the subplots
 plt.show()
 
+'''
+Using the pest performing model, the test data of 30 stocks is passed through the model
+This is used to determine if the stock is over performing or under performing
+'''
 momentum_stocks = ['TSCO.L',
 'SKG.L',
 'MRO.L',
